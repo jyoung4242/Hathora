@@ -21,6 +21,14 @@ const game = new Engine({
 
 const clientConfig: HathoraClientConfig = {
   appId,
+  connectionDetails: {
+    host: "localhost",
+    port: 8080,
+    transportType: "tcp",
+  },
+  updateCallback: (data: any) => {
+    console.log(data);
+  },
 };
 const client = new ExcaliburHathoraClient(clientConfig);
 

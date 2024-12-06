@@ -11,6 +11,16 @@ Hathora client. It includes the appId of the game, the connectionDetails for
 establishing a connection with the server, and an updateCallback function that 
 will be called whenever there is an update from the server.
 
+Connection Details: This interface defines the details required to establish a 
+connection with the server. It includes the host, port, and protocol of the 
+server.
+
+export declare type ConnectionDetails = {
+    host: string;
+    port: number;
+    transportType: "tcp" | "tls" | "udp";
+};
+
 HathoraLobbyConfig: This interface defines the configuration options for creating
  a lobby. It includes the region where the lobby will be hosted, the visibility of
  the lobby, and other optional parameters.
@@ -25,6 +35,13 @@ leaving lobbies, and handling player events.
 Overall, HathoraPlugin.ts simplifies the integration of Hathora features into an 
 Excalibur game by providing a convenient API for creating and managing lobbies, 
 handling player events, and interacting with the Hathora server.
+
+Client Process:
+
+1. Create a new ExcaliburHathoraClient instance with the necessary configuration options.
+2. Use the Lobby methods to find lobbies, create lobbies, join lobbies, and leave lobbies.
+3. Use the client to send and receive data from the server.
+
 */
 
 import { HathoraCloud } from "@hathora/cloud-sdk-typescript";
