@@ -37,10 +37,10 @@ Excalibur game by providing a convenient API for creating and managing lobbies,
 handling player events, and interacting with the Hathora server.
 
 Client Process:
-
 1. Create a new ExcaliburHathoraClient instance with the necessary configuration options.
-2. Use the Lobby methods to find lobbies, create lobbies, join lobbies, and leave lobbies.
-3. Use the client to send and receive data from the server.
+2. Use the Authentication methods to authenticate the player.
+3. Use the Lobby methods to find lobbies, create lobbies, join lobbies, and leave lobbies.
+4. Use the client to send and receive data from the server.
 
 */
 
