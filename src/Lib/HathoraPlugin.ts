@@ -90,7 +90,6 @@ export class ExcaliburHathoraClient {
     this.authService = this.hathoraSDK.authV1;
     this.connectionDetails = clientConfig.connectionDetails;
     this.updateCallback = clientConfig.updateCallback;
-    console.log(this);
   }
 
   /************************
