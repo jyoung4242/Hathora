@@ -52,6 +52,7 @@ import {
   PlayerTokenObject,
   LobbyV3,
   ConnectionInfoV2,
+  ExposedPort,
 } from "@hathora/cloud-sdk-typescript/models/components";
 
 export interface HathoraClientConfig {
@@ -66,142 +67,217 @@ export interface HathoraLobbyConfig {
   roomConfig?: any;
 }
 
+export enum HathoraConnectionStatus {
+  loggedOut,
+  loggedIn,
+  Connected,
+}
+
 export class ExcaliburHathoraClient {
-  hathoraSDK: HathoraCloud;
-  appId: string;
-  lobbyService;
-  roomService;
-  authService;
-  loginResponse: PlayerTokenObject | null = null;
-  publicLobbies: LobbyV3[] = [];
-  connectionInfo: ConnectionInfoV2 | null = null;
-  connection: HathoraConnection | null = null;
-  roomId: string | null = null;
-  connectionDetails: ConnectionDetails;
-  updateCallback: (data: any) => void;
+  private _hathoraSDK: HathoraCloud;
+  private _userid: string | null = null;
+  private _appId: string;
+  private _lobbyService;
+  private _roomService;
+  private _authService;
+  private _loginResponse: PlayerTokenObject | null = null;
+  private _publicLobbies: LobbyV3[] = [];
+  private _privateLobbies: LobbyV3[] = [];
+  private _connectionInfo: ConnectionInfoV2 | null = null;
+  private _connection: HathoraConnection | null = null;
+  private _roomId: string | null = null;
+  private _connectionDetails: ConnectionDetails;
+  private _updateCallback: (data: any) => void;
+  private _connectionStatus: HathoraConnectionStatus = HathoraConnectionStatus.loggedOut;
 
   constructor(clientConfig: HathoraClientConfig) {
-    this.hathoraSDK = new HathoraCloud({
+    this._hathoraSDK = new HathoraCloud({
       appId: clientConfig.appId,
     });
-    this.appId = clientConfig.appId;
-    this.lobbyService = this.hathoraSDK.lobbiesV3;
-    this.roomService = this.hathoraSDK.roomsV2;
-    this.authService = this.hathoraSDK.authV1;
-    this.connectionDetails = clientConfig.connectionDetails;
-    this.updateCallback = clientConfig.updateCallback;
+    this._appId = clientConfig.appId;
+    this._lobbyService = this._hathoraSDK.lobbiesV3;
+    this._roomService = this._hathoraSDK.roomsV2;
+    this._authService = this._hathoraSDK.authV1;
+    this._connectionDetails = clientConfig.connectionDetails;
+    this._updateCallback = clientConfig.updateCallback;
   }
 
+  //#region Authentication
   /************************
   Authentication Methods
   ************************/
 
   async loginAnonymous() {
-    this.loginResponse = await this.authService.loginAnonymous();
-    return this.loginResponse;
+    this._loginResponse = await this._authService.loginAnonymous();
+    if (this._loginResponse.token) this._connectionStatus = HathoraConnectionStatus.loggedIn;
+    return this._loginResponse;
   }
 
   async loginGoogle(googleId: string) {
-    this.loginResponse = await this.authService.loginGoogle({ idToken: googleId });
-    return this.loginResponse;
+    this._loginResponse = await this._authService.loginGoogle({ idToken: googleId });
+    if (this._loginResponse.token) this._connectionStatus = HathoraConnectionStatus.loggedIn;
+    return this._loginResponse;
   }
 
   async loginNickName(nickName: string) {
-    this.loginResponse = await this.authService.loginNickname({ nickname: nickName });
-    return this.loginResponse;
+    this._loginResponse = await this._authService.loginNickname({ nickname: nickName });
+    if (this._loginResponse.token) this._connectionStatus = HathoraConnectionStatus.loggedIn;
+    return this._loginResponse;
   }
 
+  logout() {
+    this._loginResponse = null;
+    this._connectionStatus = HathoraConnectionStatus.loggedOut;
+    this._userid = "";
+  }
+
+  //#endregion Authentication
+
+  //#region Lobby
   /************************
   Lobby Methods
   ************************/
   async createLobby(lobbyConfig: HathoraLobbyConfig): Promise<LobbyV3> {
-    if (this.loginResponse === null) {
-      throw new Error("No user logged in");
-    }
+    if (this._connectionStatus != HathoraConnectionStatus.loggedIn) throw new Error("No user logged in");
+    if (this._loginResponse === null) throw new Error("No user logged in");
+
     let roomConfig;
     lobbyConfig.roomConfig ? (roomConfig = lobbyConfig.roomConfig) : (roomConfig = {});
 
-    return await this.lobbyService.createLobby(
+    let lobbyResult = await this._lobbyService.createLobby(
       {
-        playerAuth: this.loginResponse?.token as string,
+        playerAuth: this._loginResponse?.token as string,
       },
       {
         region: lobbyConfig.region,
         visibility: lobbyConfig.visibility,
         roomConfig: JSON.stringify(roomConfig),
       },
-      this.appId
+      this._appId
     );
+
+    if (lobbyConfig.visibility === LobbyVisibility.Private || lobbyConfig.visibility === LobbyVisibility.Local) {
+      this._privateLobbies.push(lobbyResult);
+    }
+
+    this._userid = lobbyResult.createdBy as string;
+
+    return lobbyResult;
   }
 
   async fetchPublicLobbies(): Promise<LobbyV3[]> {
-    this.publicLobbies = await this.lobbyService.listActivePublicLobbies(this.appId);
-    return this.publicLobbies;
+    if (this._connectionStatus != HathoraConnectionStatus.loggedIn) throw new Error("No user logged in");
+    if (this._loginResponse === null) throw new Error("No user logged in");
+
+    this._publicLobbies = await this._lobbyService.listActivePublicLobbies(this._appId);
+    return this._publicLobbies;
+  }
+
+  async fetchPrivateLocalLobbies() {
+    if (this._connectionStatus != HathoraConnectionStatus.loggedIn) throw new Error("No user logged in");
+    if (this._loginResponse === null) throw new Error("No user logged in");
+
+    return this._privateLobbies;
   }
 
   async getLobbyInfo(roomId: string): Promise<LobbyV3> {
-    return await this.lobbyService.getLobbyInfoByRoomId(roomId, this.appId);
+    if (this._connectionStatus != HathoraConnectionStatus.loggedIn) throw new Error("No user logged in");
+    if (this._loginResponse === null) throw new Error("No user logged in");
+
+    return await this._lobbyService.getLobbyInfoByRoomId(roomId, this._appId);
   }
 
-  async joinLobby(roomId: string) {
-    if (this.loginResponse === null) {
-      throw new Error("No user logged in");
-    }
-    this.connectionInfo = await this.roomService.getConnectionInfo(roomId);
+  async joinLobby(room: LobbyV3) {
+    if (this._connectionStatus != HathoraConnectionStatus.loggedIn) throw new Error("No user logged in");
+    if (this._loginResponse === null) throw new Error("No user logged in");
 
-    if (this.connectionInfo.roomId) {
-      this.roomId = this.connectionInfo.roomId;
-      this.connection = new HathoraConnection(this.roomId, this.connectionDetails);
-      await this.connection.connect(this.loginResponse.token);
-      this.connection.onMessage((event: ArrayBuffer) => {
-        this.updateCallback(event);
+    let connectionInfo;
+    if (room.visibility == LobbyVisibility.Local) {
+      connectionInfo = this._connectionDetails;
+      await delay(500);
+    } else {
+      let ConnectionDetails = await this._roomService.getConnectionInfo(room.roomId, this._appId);
+      //await this.roomClient.getConnectionInfo(
+      connectionInfo = ConnectionDetails.exposedPort;
+    }
+
+    if (connectionInfo) {
+      this._roomId = room.roomId;
+      this._connection = new HathoraConnection(this._roomId, connectionInfo as ExposedPort as ConnectionDetails);
+      await this._connection.connect(this._loginResponse.token);
+      this._connection.onMessage((event: ArrayBuffer) => {
+        this._updateCallback(event);
       });
-      this.connection.onMessageString((event: string) => {
-        this.updateCallback(event);
+      this._connection.onMessageString((event: string) => {
+        this._updateCallback(event);
       });
-      this.connection.onMessageJson((event: any) => {
-        this.updateCallback(event);
+      this._connection.onMessageJson((event: any) => {
+        this._updateCallback(event);
       });
-      this.connection.onClose((e: any) => {
-        this.connection = null;
-        this.roomId = null;
-        this.connectionInfo = null;
+      this._connection.onClose((e: any) => {
+        this._connection = null;
+        this._roomId = null;
+        this._connectionInfo = null;
       });
     }
   }
 
   async leaveLobby() {
-    if (!this.connectionInfo?.roomId) return;
-    if (!this.roomId) return;
-    if (this.connectionInfo?.roomId) {
-      this.connection?.disconnect();
+    if (this._connectionStatus != HathoraConnectionStatus.Connected) throw new Error("User not connected to room");
+
+    if (this._loginResponse === null) throw new Error("No user logged in");
+
+    if (!this._connectionInfo?.roomId) return;
+    if (!this._roomId) return;
+    if (this._connectionInfo?.roomId) {
+      this._connection?.disconnect();
+      this._roomId = null;
     }
   }
 
+  //#endregion Lobby
+
+  //#region SendingData
   /************************
   Sending Data
   ************************/
   send(data: any) {
-    if (!this.connectionInfo?.roomId) return;
-    if (!this.roomId) return;
-    if (this.connectionInfo?.roomId) {
-      this.connection?.write(data);
-    }
+    if (!this._connection) return;
+    if (!this._roomId) return;
+    this._connection?.write(data);
   }
 
   sendString(data: string) {
-    if (!this.connectionInfo?.roomId) return;
-    if (!this.roomId) return;
-    if (this.connectionInfo?.roomId) {
-      this.connection?.writeString(data);
-    }
+    if (!this._connection) return;
+    if (!this._roomId) return;
+    this._connection?.writeString(data);
   }
 
   sendJson(data: any) {
-    if (!this.connectionInfo?.roomId) return;
-    if (!this.roomId) return;
-    if (this.connectionInfo?.roomId) {
-      this.connection?.writeJson(data);
-    }
+    if (!this._connection) return;
+    if (!this._roomId) return;
+    this._connection?.writeJson(data);
   }
+
+  //#endregion SendingData
+
+  //#region settersgetters
+
+  get roomId(): string | null {
+    return this._roomId;
+  }
+
+  get userId(): string | null {
+    return this._userid;
+  }
+
+  get connectionStatus(): HathoraConnectionStatus {
+    return this._connectionStatus;
+  }
+  //#endregion settersgetters
+}
+
+//async delay function
+function delay(ms: number) {
+  return new Promise(resolve => setTimeout(resolve, ms));
 }

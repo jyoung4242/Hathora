@@ -2,13 +2,18 @@
   "name": "server",
   "version": "1.0.0",
   "main": "index.js",
+  "type": "module",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "tsx server.ts"
   },
   "author": "",
   "license": "ISC",
   "description": "",
   "dependencies": {
-    "@hathora/cloud-sdk-typescript": "^2.11.4"
+    "@hathora/cloud-sdk-typescript": "^2.11.4",
+    "@hathora/server-sdk": "^1.0.0",
+    "detect-collisions": "^6.4.2",
+    "dotenv": "^16.4.7",
+    "tsx": "^4.19.2"
   }
 }
