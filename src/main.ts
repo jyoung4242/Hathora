@@ -63,7 +63,8 @@ class myScene extends Scene {
   }
 }
 
-let appId = "app-6b60b294-789f-41a3-a67e-5f40baf27768";
+// Setup Hathora Client Plugin
+let appId = "app-6b60b294-789f-41a3-a67e-5f40baf27768"; //provided by Hathora
 const clientConfig: HathoraClientConfig = {
   appId,
   connectionDetails: {
@@ -124,8 +125,11 @@ const clientConfig: HathoraClientConfig = {
   },
 };
 export const client = new ExcaliburHathoraClient(clientConfig);
+
+//setup peasy
 await UI.create(document.body, model, template).attached;
 
+//setup Excalibur engine
 const game = new Engine({
   width: 800, // the width of the canvas
   height: 600, // the height of the canvas
@@ -136,8 +140,6 @@ const game = new Engine({
     main: new myScene(),
   },
 });
-
-console.log(client);
 
 await game.start();
 game.goToScene("main");
