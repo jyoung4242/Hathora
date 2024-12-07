@@ -45,7 +45,7 @@ Client Process:
 */
 
 import { HathoraCloud } from "@hathora/cloud-sdk-typescript";
-import { HathoraConnection, ConnectionDetails } from "@hathora/client-sdk";
+import { HathoraConnection, ConnectionDetails, HathoraClient } from "@hathora/client-sdk";
 import {
   Region,
   LobbyVisibility,
@@ -75,6 +75,7 @@ export enum HathoraConnectionStatus {
 
 export class ExcaliburHathoraClient {
   private _hathoraSDK: HathoraCloud;
+  private _hathoraClient: HathoraClient | null = null;
   private _userid: string | null = null;
   private _appId: string;
   private _lobbyService;
@@ -110,19 +111,26 @@ export class ExcaliburHathoraClient {
   async loginAnonymous() {
     this._loginResponse = await this._authService.loginAnonymous();
     if (this._loginResponse.token) this._connectionStatus = HathoraConnectionStatus.loggedIn;
+    this._userid = HathoraClient.getUserFromToken(this._loginResponse.token).id;
     return this._loginResponse;
   }
 
   async loginGoogle(googleId: string) {
     this._loginResponse = await this._authService.loginGoogle({ idToken: googleId });
     if (this._loginResponse.token) this._connectionStatus = HathoraConnectionStatus.loggedIn;
+    this._userid = HathoraClient.getUserFromToken(this._loginResponse.token).id;
     return this._loginResponse;
   }
 
   async loginNickName(nickName: string) {
     this._loginResponse = await this._authService.loginNickname({ nickname: nickName });
     if (this._loginResponse.token) this._connectionStatus = HathoraConnectionStatus.loggedIn;
+    this._userid = HathoraClient.getUserFromToken(this._loginResponse.token).id;
     return this._loginResponse;
+  }
+
+  async getUserId() {
+    if (this._loginResponse === null) return;
   }
 
   logout() {
