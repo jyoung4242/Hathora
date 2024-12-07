@@ -168,8 +168,6 @@ export class ExcaliburHathoraClient {
       this._privateLobbies.push(lobbyResult);
     }
 
-    this._userid = lobbyResult.createdBy as string;
-
     return lobbyResult;
   }
 
