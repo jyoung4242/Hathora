@@ -129,10 +129,6 @@ export class ExcaliburHathoraClient {
     return this._loginResponse;
   }
 
-  async getUserId() {
-    if (this._loginResponse === null) return;
-  }
-
   logout() {
     this._loginResponse = null;
     this._connectionStatus = HathoraConnectionStatus.loggedOut;
