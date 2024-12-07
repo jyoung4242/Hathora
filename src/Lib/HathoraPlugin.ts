@@ -75,7 +75,6 @@ export enum HathoraConnectionStatus {
 
 export class ExcaliburHathoraClient {
   private _hathoraSDK: HathoraCloud;
-  private _hathoraClient: HathoraClient | null = null;
   private _userid: string | null = null;
   private _appId: string;
   private _lobbyService;
