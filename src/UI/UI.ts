@@ -17,6 +17,7 @@ export const model = {
   login: async () => {
     let loginId = await client.loginAnonymous();
     console.log(loginId);
+    console.log("userid: ", client.userId);
   },
   getLobbies: async () => {
     let lobbies = await client.fetchPublicLobbies();
